@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Untuk kamu 🐈‍⬛</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    background: #0a0710;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+  }
+
+  #asciiCanvas {
+    display: block;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  #catWrap {
+    position: fixed;
+    bottom: 8%;
+    left: 10%;
+    z-index: 2;
+    pointer-events: none;
+    will-change: transform;
+    transform-origin: center bottom;
+  }
+
+  #catSprite {
+    display: block;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 6px 14px rgba(255, 158, 203, 0.35));
+  }
+
+  #catShadow {
+    position: fixed;
+    bottom: 6%;
+    left: 10%;
+    height: 14px;
+    background: radial-gradient(ellipse, rgba(255,158,203,0.30) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: 1;
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  .hint {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.3);
+    font-size: 12px;
+    letter-spacing: 1px;
+    z-index: 5;
+    text-align: center;
+    transition: opacity 0.4s;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="asciiCanvas"></canvas>
+
+<div id="catWrap">
+  <canvas id="catSprite"></canvas>
+</div>
+<div id="catShadow"></div>
+
+<div class="hint">ketuk layar — kucingnya akan lompat & tidur di kotak pesan 🐾</div>
+
+<script>
+// ================== TEKS ==================
+const LINE1 = "Hey pretty, you did great job today.";
+const LINE2 = "I'm proud of you";
+
+// ============================================================
+// SPRITE SHEET — 7 frame (nambah 1 frame "sleep")
+// ============================================================
+const FRAME_W = 32, FRAME_H = 32, FRAMES = 7;
+// 0=walkA, 1=walkB, 2=sit, 3=jump, 4=blink, 5=happy, 6=sleep
+
+const sheet = document.createElement("canvas");
+sheet.width = FRAME_W * FRAMES;
+sheet.height = FRAME_H;
+const sctx = sheet.getContext("2d");
+
+const COL = {
+  body:   "#1a1a1a",
+  outline:"#3d3d3d",
+  eye:    "#ffd93d",
+  pupil:  "#1a1a1a",
+  nose:   "#ff9ecb",
+  ear:    "#ff9ecb",
+  white:  "#ffffff",
+  blush:  "#ff7eb3",
+};
+
+function px(ctx, x, y, color) { ctx.fillStyle = color; ctx.fillRect(x, y, 1, 1); }
+function rect(ctx, x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, y, w, h); }
+
+// ---------------- FRAME 0 — WALK A (CHUBBY) ----------------
+function drawWalkA(ctx, ox) {
+  rect(ctx, ox+6, 13, 3, 7, COL.body);
+  rect(ctx, ox+4, 11, 4, 4, COL.body);
+  rect(ctx, ox+10, 7, 12, 10, COL.body);
+  rect(ctx, ox+9,  9, 1, 6, COL.body);
+  rect(ctx, ox+22, 9, 1, 6, COL.body);
+  rect(ctx, ox+10, 4, 4, 5, COL.body);
+  rect(ctx, ox+18, 4, 4, 5, COL.body);
+  rect(ctx, ox+11, 5, 2, 3, COL.ear);
+  rect(ctx, ox+19, 5, 2, 3, COL.ear);
+  rect(ctx, ox+12, 9, 4, 4, COL.eye);
+  rect(ctx, ox+17, 9, 4, 4, COL.eye);
+  px(ctx, ox+13, 10, COL.pupil);
+  px(ctx, ox+18, 10, COL.pupil);
+  px(ctx, ox+13, 9, COL.white);
+  px(ctx, ox+18, 9, COL.white);
+  px(ctx, ox+11, 12, COL.blush);
+  px(ctx, ox+21, 12, COL.blush);
+  px(ctx, ox+15, 13, COL.nose);
+  px(ctx, ox+16, 13, COL.nose);
+  rect(ctx, ox+8, 16, 16, 8, COL.body);
+  rect(ctx, ox+9, 15, 14, 1, COL.body);
+  rect(ctx, ox+9, 24, 14, 1, COL.body);
+  rect(ctx, ox+9,  24, 4, 3, COL.body);
+  rect(ctx, ox+18, 24, 4, 3, COL.body);
+  ctx.strokeStyle = COL.outline; ctx.lineWidth = 0.5;
+  ctx.strokeRect(ox+10.5, 7.5, 11, 9);
+}
+
+// ---------------- FRAME 1 — WALK B ----------------
+function drawWalkB(ctx, ox) {
+  rect(ctx, ox+6, 16, 3, 6, COL.body);
+  rect(ctx, ox+4, 20, 4, 3, COL.body);
+  rect(ctx, ox+10, 7, 12, 10, COL.body);
+  rect(ctx, ox+9,  9, 1, 6, COL.body);
+  rect(ctx, ox+22, 9, 1, 6, COL.body);
+  rect(ctx, ox+10, 4, 4, 5, COL.body);
+  rect(ctx, ox+18, 4, 4, 5, COL.body);
+  rect(ctx, ox+11, 5, 2, 3, COL.ear);
+  rect(ctx, ox+19, 5, 2, 3, COL.ear);
+  rect(ctx, ox+12, 9, 4, 4, COL.eye);
+  rect(ctx, ox+17, 9, 4, 4, COL.eye);
+  px(ctx, ox+13, 10, COL.pupil);
+  px(ctx, ox+18, 10, COL.pupil);
+  px(ctx, ox+13, 9, COL.white);
+  px(ctx, ox+18, 9, COL.white);
+  px(ctx, ox+11, 12, COL.blush);
+  px(ctx, ox+21, 12, COL.blush);
+  px(ctx, ox+15, 13, COL.nose);
+  px(ctx, ox+16, 13, COL.nose);
+  rect(ctx, ox+8, 16, 16, 8, COL.body);
+  rect(ctx, ox+9, 15, 14, 1, COL.body);
+  rect(ctx, ox+9, 24, 14, 1, COL.body);
+  rect(ctx, ox+9,  24, 4, 2, COL.body);
+  rect(ctx, ox+18, 24, 4, 4, COL.body);
+  ctx.strokeStyle = COL.outline; ctx.lineWidth = 0.5;
+  ctx.strokeRect(ox+10.5, 7.5, 11, 9);
+}
+
+// ---------------- FRAME 2 — SIT ----------------
+function drawSit(ctx, ox) {
+  rect(ctx, ox+4, 21, 6, 3, COL.body);
+  rect(ctx, ox+5, 24, 4, 1, COL.body);
+  rect(ctx, ox+10, 7, 12, 10, COL.body);
+  rect(ctx, ox+9,  9, 1, 6, COL.body);
+  rect(ctx, ox+22, 9, 1, 6, COL.body);
+  rect(ctx, ox+10, 4, 4, 5, COL.body);
+  rect(ctx, ox+18, 4, 4, 5, COL.body);
+  rect(ctx, ox+11, 5, 2, 3, COL.ear);
+  rect(ctx, ox+19, 5, 2, 3, COL.ear);
+  rect(ctx, ox+12, 9, 4, 4, COL.eye);
+  rect(ctx, ox+17, 9, 4, 4, COL.eye);
+  px(ctx, ox+13, 10, COL.pupil);
+  px(ctx, ox+18, 10, COL.pupil);
+  px(ctx, ox+13, 9, COL.white);
+  px(ctx, ox+18, 9, COL.white);
+  px(ctx, ox+11, 12, COL.blush);
+  px(ctx, ox+21, 12, COL.blush);
+  px(ctx, ox+15, 13, COL.nose);
+  px(ctx, ox+16, 13, COL.nose);
+  rect(ctx, ox+8, 16, 16, 7, COL.body);
+  rect(ctx, ox+7, 18, 18, 4, COL.body);
+  rect(ctx, ox+9, 23, 14, 2, COL.body);
+  rect(ctx, ox+8,  25, 5, 2, COL.body);
+  rect(ctx, ox+19, 25, 5, 2, COL.body);
+  ctx.strokeStyle = COL.outline; ctx.lineWidth = 0.5;
+  ctx.strokeRect(ox+10.5, 7.5, 11, 9);
+}
+
+// ---------------- FRAME 3 — JUMP ----------------
+function drawJump(ctx, ox) {
+  rect(ctx, ox+6, 7, 3, 7, COL.body);
+  rect(ctx, ox+4, 5, 4, 4, COL.body);
+  rect(ctx, ox+10, 5, 12, 10, COL.body);
+  rect(ctx, ox+9,  7, 1, 6, COL.body);
+  rect(ctx, ox+22, 7, 1, 6, COL.body);
+  rect(ctx, ox+10, 2, 4, 5, COL.body);
+  rect(ctx, ox+18, 2, 4, 5, COL.body);
+  rect(ctx, ox+11, 3, 2, 3, COL.ear);
+  rect(ctx, ox+19, 3, 2, 3, COL.ear);
+  rect(ctx, ox+12, 7, 4, 4, COL.eye);
+  rect(ctx, ox+17, 7, 4, 4, COL.eye);
+  px(ctx, ox+13, 8, COL.pupil);
+  px(ctx, ox+18, 8, COL.pupil);
+  px(ctx, ox+13, 7, COL.white);
+  px(ctx, ox+18, 7, COL.white);
+  px(ctx, ox+11, 10, COL.blush);
+  px(ctx, ox+21, 10, COL.blush);
+  px(ctx, ox+15, 11, COL.nose);
+  px(ctx, ox+16, 11, COL.nose);
+  rect(ctx, ox+8, 14, 16, 6, COL.body);
+  rect(ctx, ox+9, 13, 14, 1, COL.body);
+  rect(ctx, ox+5, 16, 5, 3, COL.body);
+  rect(ctx, ox+22, 16, 5, 3, COL.body);
+  ctx.strokeStyle = COL.outline; ctx.lineWidth = 0.5;
+  ctx.strokeRect(ox+10.5, 5.5, 11, 9);
+}
+
+// ---------------- FRAME 4 — BLINK ----------------
+function drawBlink(ctx, ox) {
+  rect(ctx, ox+6, 13, 3, 7, COL.body);
+  rect(ctx, ox+4, 11, 4, 4, COL.body);
+  rect(ctx, ox+10, 7, 12, 10, COL.body);
+  rect(ctx, ox+9,  9, 1, 6, COL.body);
+  rect(ctx, ox+22, 9, 1, 6, COL.body);
+  rect(ctx, ox+10, 4, 4, 5, COL.body);
+  rect(ctx, ox+18, 4, 4, 5, COL.body);
+  rect(ctx, ox+11, 5, 2, 3, COL.ear);
+  rect(ctx, ox+19, 5, 2, 3, COL.ear);
+  rect(ctx, ox+12, 10, 4, 1, COL.eye);
+  rect(ctx, ox+17, 10, 4, 1, COL.eye);
+  px(ctx, ox+11, 12, COL.blush);
+  px(ctx, ox+21, 12, COL.blush);
+  px(ctx, ox+15, 13, COL.nose);
+  px(ctx, ox+16, 13, COL.nose);
+  rect(ctx, ox+8, 16, 16, 8, COL.body);
+  rect(ctx, ox+9, 15, 14, 1, COL.body);
+  rect(ctx, ox+9, 24, 14, 1, COL.body);
+  rect(ctx, ox+9,  24, 4, 3, COL.body);
+  rect(ctx, ox+18, 24, 4, 3, COL.body);
+  ctx.strokeStyle = COL.outline; ctx.lineWidth = 0.5;
+  ctx.strokeRect(ox+10.5, 7.5, 11, 9);
+}
+
+// ---------------- FRAME 5 — HAPPY ----------------
+function drawHappy(ctx, ox) {
+  rect(ctx, ox+6, 13, 3, 7, COL.body);
+  rect(ctx, ox+4, 11, 4, 4, COL.body);
+  rect(ctx, ox+10, 7, 12, 10, COL.body);
+  rect(ctx, ox+9,  9, 1, 6, COL.body);
+  rect(ctx, ox+22, 9, 1, 6, COL.body);
+  rect(ctx, ox+10, 4, 4, 5, COL.body);
+  rect(ctx, ox+18, 4, 4, 5, COL.body);
+  rect(ctx, ox+11, 5, 2, 3, COL.ear);
+  rect(ctx, ox+19, 5, 2, 3, COL.ear);
+  px(ctx, ox+13, 9, COL.eye);
+  px(ctx, ox+12, 10, COL.eye);
+  px(ctx, ox+14, 10, COL.eye);
+  px(ctx, ox+18, 9, COL.eye);
+  px(ctx, ox+17, 10, COL.eye);
+  px(ctx, ox+19, 10, COL.eye);
+  rect(ctx, ox+10, 12, 2, 1, COL.blush);
+  rect(ctx, ox+20, 12, 2, 1, COL.blush);
+  px(ctx, ox+15, 13, COL.nose);
+  px(ctx, ox+16, 13, COL.nose);
+  rect(ctx, ox+8, 16, 16, 8, COL.body);
+  rect(ctx, ox+9, 15, 14, 1, COL.body);
+  rect(ctx, ox+9, 24, 14, 1, COL.body);
+  rect(ctx, ox+9,  24, 4, 3, COL.body);
+  rect(ctx, ox+18, 24, 4, 3, COL.body);
+  ctx.strokeStyle = COL.outline; ctx.lineWidth = 0.5;
+  ctx.strokeRect(ox+10.5, 7.5, 11, 9);
+}
+
+// ---------------- FRAME 6 — SLEEP (baru) ----------------
+// Kucing tidur: badan meringkuk, mata tutup (- -), kepala miring
+function drawSleep(ctx, ox) {
+  // ekor melingkar di depan
+  rect(ctx, ox+4, 23, 7, 2, COL.body);
+  rect(ctx, ox+4, 21, 2, 3, COL.body);
+
+  // badan tidur (bulat meringkuk)
+  rect(ctx, ox+6, 15, 20, 9, COL.body);
+  rect(ctx, ox+7, 14, 18, 1, COL.body);
+  rect(ctx, ox+7, 24, 18, 1, COL.body);
+
+  // kepala (lebih rendah, menyandar)
+  rect(ctx, ox+18, 9, 10, 8, COL.body);
+  rect(ctx, ox+27, 11, 1, 5, COL.body);
+  // telinga
+  rect(ctx, ox+18, 6, 3, 4, COL.body);
+  rect(ctx, ox+24, 6, 3, 4, COL.body);
+  rect(ctx, ox+19, 7, 1, 2, COL.ear);
+  rect(ctx, ox+25, 7, 1, 2, COL.ear);
+
+  // mata tidur (garis melengkung ke bawah)
+  rect(ctx, ox+20, 12, 3, 1, COL.eye);
+  rect(ctx, ox+24, 12, 3, 1, COL.eye);
+  // blush
+  px(ctx, ox+19, 14, COL.blush);
+  px(ctx, ox+27, 14, COL.blush);
+  // hidung
+  px(ctx, ox+23, 14, COL.nose);
+  px(ctx, ox+24, 14, COL.nose);
+
+  ctx.strokeStyle = COL.outline; ctx.lineWidth = 0.5;
+  ctx.strokeRect(ox+18.5, 9.5, 9, 7);
+}
+
+// gambar semua frame
+drawWalkA(sctx, 0 * FRAME_W);
+drawWalkB(sctx, 1 * FRAME_W);
+drawSit  (sctx, 2 * FRAME_W);
+drawJump (sctx, 3 * FRAME_W);
+drawBlink(sctx, 4 * FRAME_W);
+drawHappy(sctx, 5 * FRAME_W);
+drawSleep(sctx, 6 * FRAME_W);
+
+// ============================================================
+// SETUP SPRITE
+// ============================================================
+const catSprite = document.getElementById("catSprite");
+const catWrap   = document.getElementById("catWrap");
+const catShadow = document.getElementById("catShadow");
+const hintEl    = document.querySelector(".hint");
+
+const SPRITE_SCALE = 3.5;
+catSprite.width  = FRAME_W * SPRITE_SCALE;
+catSprite.height = FRAME_H * SPRITE_SCALE;
+catSprite.style.width  = (FRAME_W * SPRITE_SCALE) + "px";
+catSprite.style.height = (FRAME_H * SPRITE_SCALE) + "px";
+
+const sctx2 = catSprite.getContext("2d");
+sctx2.imageSmoothingEnabled = false;
+
+function showFrame(idx) {
+  sctx2.clearRect(0, 0, catSprite.width, catSprite.height);
+  sctx2.drawImage(
+    sheet,
+    idx * FRAME_W, 0, FRAME_W, FRAME_H,
+    0, 0, catSprite.width, catSprite.height
+  );
+}
+
+// ============================================================
+// STATE KUCING + STATE INTERAKSI
+// ============================================================
+const cat = {
+  xPct: 10,
+  yPct: 8,            // % dari bawah, dipakai untuk animasi lompat
+  dir: 1,
+  speed: 6,
+  walking: true,
+  pauseTimer: 0,
+  blinkTimer: 2.5,
+  blinkLeft: 0,
+  jumpTimer: 4,
+  jumpLeft: 0,
+  jumpDur: 0.7,
+  jumpPeak: 55,
+  happy: false,
+  frameIdx: 0,
+  frameTimer: 0,
+};
+
+// mode interaksi:
+// "roam"   = jalan normal di lantai
+// "toBox"  = melompat ke pojok kanan bawah kotak
+// "sleep"  = tidur di kotak (dengan zzz)
+// "toFloor"= melompat balik ke lantai
+const interact = {
+  mode: "roam",
+  tStart: 0,
+  sleepDur: 6.0,        // berapa lama tidur (detik)
+  flyDur: 0.9,          // durasi lompat ke kotak
+  targetX: 0,           // posisi tujuan (%)
+  targetY: 0,           // posisi tujuan (% dari bawah)
+  startX: 0,
+  startY: 0,
+  zzzTimer: 0,
+  heartsTimer: 0,
+};
+
+// ============================================================
+// HITUNG POJOK KANAN BAWAH KOTAK DIALOG (dalam % viewport)
+// ============================================================
+function boxBottomRight() {
+  // kotak ASCII ada di grid W x H
+  // kita perlu tahu posisi pixel kotak di layar
+  // ox, oy, cw, chh adalah variabel dari layout()
+  const boxRightX = ox + (BOX_X + BOX_W) * cw;     // px
+  const boxBottomY = oy + (BOX_Y + BOX_H) * chh;   // px dari atas
+  const xPct = (boxRightX / innerWidth) * 100;
+  const yFromBottom = ((innerHeight - boxBottomY) / innerHeight) * 100;
+  return { xPct, yPct: yFromBottom };
+}
+
+// ============================================================
+// UPDATE KUCING
+// ============================================================
+function updateCat(t, dt) {
+  if (t > (1.8 + LINE1.length / 14 + 0.7 + LINE2.length / 9) + 0.5) {
+    cat.happy = true;
+  }
+
+  // ---- BLINK ----
+  cat.blinkTimer -= dt;
+  if (cat.blinkTimer <= 0 && cat.blinkLeft <= 0) {
+    cat.blinkLeft = 0.18;
+    cat.blinkTimer = 2.8 + Math.random() * 2.5;
+  }
+  if (cat.blinkLeft > 0) cat.blinkLeft -= dt;
+
+  let frameToShow = 0;
+  let yOffsetPx = 0;
+
+  // ============================================================
+  // MODE INTERAKSI
+  // ============================================================
+  if (interact.mode === "toBox") {
+    // lompat parabola dari posisi awal ke pojok kanan bawah kotak
+    const p = Math.min(1, (t - interact.tStart) / interact.flyDur);
+    const ease = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p+2, 2)/2; // easeInOut
+    cat.xPct = interact.startX + (interact.targetX - interact.startX) * ease;
+    const arc = Math.sin(p * Math.PI) * 25; // tinggi lompat dalam %
+    cat.yPct = interact.startY + (interact.targetY - interact.startY) * ease + arc;
+    frameToShow = 3; // frame jump
+
+    if (p >= 1) {
+      // sampai di kotak → tidur
+      interact.mode = "sleep";
+      interact.tStart = t;
+      interact.zzzTimer = 0;
+      interact.heartsTimer = 0;
+      cat.xPct = interact.targetX;
+      cat.yPct = interact.targetY;
+    }
+  }
+  else if (interact.mode === "sleep") {
+    cat.xPct = interact.targetX;
+    cat.yPct = interact.targetY;
+    frameToShow = 6; // frame sleep
+
+    // zzz muncul tiap 0.6 detik
+    interact.zzzTimer += dt;
+    if (interact.zzzTimer > 0.6) {
+      interact.zzzTimer = 0;
+      spawnZzz();
+    }
+    // hati kecil tiap 1.2 detik
+    interact.heartsTimer += dt;
+    if (interact.heartsTimer > 1.2) {
+      interact.heartsTimer = 0;
+      spawnHeart();
+    }
+
+    // selesai tidur → bangun & lompat balik
+    if (t - interact.tStart > interact.sleepDur) {
+      interact.mode = "toFloor";
+      interact.tStart = t;
+      interact.startX = cat.xPct;
+      interact.startY = cat.yPct;
+      interact.targetX = 10 + Math.random() * 70; // posisi acak di lantai
+      interact.targetY = 8; // tinggi lantai
+    }
+  }
+  else if (interact.mode === "toFloor") {
+    const p = Math.min(1, (t - interact.tStart) / interact.flyDur);
+    const ease = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p+2, 2)/2;
+    cat.xPct = interact.startX + (interact.targetX - interact.startX) * ease;
+    const arc = Math.sin(p * Math.PI) * 20;
+    cat.yPct = interact.startY + (interact.targetY - interact.startY) * ease + arc;
+    frameToShow = 3;
+
+    if (p >= 1) {
+      // sampai di lantai → lanjut jalan
+      interact.mode = "roam";
+      cat.yPct = 8;
+      cat.walking = true;
+      cat.pauseTimer = 0;
+    }
+  }
+  else {
+    // ============================================================
+    // MODE ROAM (jalan normal)
+    // ============================================================
+    // jump random
+    if (cat.jumpLeft <= 0 && cat.walking) {
+      cat.jumpTimer -= dt;
+      if (cat.jumpTimer <= 0) {
+        cat.jumpLeft = cat.jumpDur;
+        cat.jumpTimer = 3.5 + Math.random() * 3;
+      }
+    }
+
+    if (cat.jumpLeft > 0) {
+      cat.jumpLeft -= dt;
+      const p = Math.max(0, Math.min(1, 1 - cat.jumpLeft / cat.jumpDur));
+      yOffsetPx = Math.sin(p * Math.PI) * cat.jumpPeak;
+      cat.xPct += cat.dir * cat.speed * dt * 0.6;
+      frameToShow = 3;
+    } else {
+      if (cat.walking) {
+        cat.xPct += cat.dir * cat.speed * dt;
+        cat.pauseTimer -= dt;
+        if (cat.pauseTimer <= 0 && Math.random() < dt * 0.3) {
+          cat.walking = false;
+          cat.pauseTimer = 1.5 + Math.random() * 2;
+        }
+        cat.frameTimer += dt;
+        if (cat.frameTimer > 0.15) {
+          cat.frameTimer = 0;
+          cat.frameIdx = (cat.frameIdx + 1) % 2;
+        }
+        frameToShow = cat.frameIdx;
+      } else {
+        cat.pauseTimer -= dt;
+        if (cat.pauseTimer <= 0) cat.walking = true;
+        frameToShow = 2;
+      }
+    }
+
+    if (cat.blinkLeft > 0) frameToShow = 4;
+    if (cat.happy && !cat.walking && cat.jumpLeft <= 0) frameToShow = 5;
+
+    if (cat.xPct >= 85) { cat.xPct = 85; cat.dir = -1; }
+    if (cat.xPct <= 5)  { cat.xPct = 5;  cat.dir = 1; }
+
+    cat.yPct = 8 + yOffsetPx / window.innerHeight * 100;
+  }
+
+  // ============================================================
+  // TERAPKAN POSISI KE DOM
+  // ============================================================
+  catWrap.style.left = cat.xPct + "%";
+  catWrap.style.bottom = cat.yPct + "%";
+  // flip hanya saat roam; saat tidur hadap kiri (menghadap kotak)
+  let flip = cat.dir === -1 ? -1 : 1;
+  if (interact.mode === "sleep") flip = 1; // hadap kiri (ke dalam kotak)
+  catWrap.style.transform = `scaleX(${flip})`;
+  catWrap.style.transition = "none"; // posisi diatur manual tiap frame
+
+  // bayangan
+  const shadowVisible = interact.mode !== "sleep" && interact.mode !== "toBox";
+  catShadow.style.opacity = shadowVisible ? (0.3 * (1 - yOffsetPx / cat.jumpPeak)).toFixed(2) : "0";
+  catShadow.style.left = cat.xPct + "%";
+  catShadow.style.width = (catSprite.width * 0.8) + "px";
+  catShadow.style.transform = `translateX(-50%) scaleX(${1 - yOffsetPx / cat.jumpPeak * 0.5})`;
+
+  showFrame(frameToShow);
+}
+
+// ============================================================
+// PARTIKEL zzz & hati
+// ============================================================
+let particles = [];
+
+function spawnZzz() {
+  // posisi kepala kucing (kira-kira), kita ambil dari catWrap
+  const rect = catWrap.getBoundingClientRect();
+  const x = rect.left + rect.width * 0.75;
+  const y = rect.top + rect.height * 0.15;
+  particles.push({
+    type: "z",
+    x, y,
+    vx: 0.3 + Math.random() * 0.4,
+    vy: -0.6 - Math.random() * 0.4,
+    life: 0,
+    maxLife: 1.6,
+    ch: Math.random() < 0.5 ? "z" : "Z",
+    size: 0.8 + Math.random() * 0.6,
+  });
+}
+
+function spawnHeart() {
+  const rect = catWrap.getBoundingClientRect();
+  const x = rect.left + rect.width * (0.3 + Math.random() * 0.4);
+  const y = rect.top + rect.height * 0.2;
+  particles.push({
+    type: "heart",
+    x, y,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: -0.5 - Math.random() * 0.3,
+    life: 0,
+    maxLife: 1.8,
+    ch: Math.random() < 0.5 ? "♥" : "♡",
+    size: 0.9 + Math.random() * 0.5,
+  });
+}
+
+// partikel di canvas ASCII (untuk zzz & hati di sekitar kucing)
+// Tapi karena kucing di DOM, kita gambar zzz & hati di canvas terpisah
+// yang posisinya fixed mengikuti layar.
+const fxCanvas = document.createElement("canvas");
+fxCanvas.style.cssText = "position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:3;";
+document.body.appendChild(fxCanvas);
+const fxCtx = fxCanvas.getContext("2d");
+let fxDPR = 1;
+function resizeFx() {
+  fxDPR = Math.min(devicePixelRatio || 1, 2);
+  fxCanvas.width = innerWidth * fxDPR;
+  fxCanvas.height = innerHeight * fxDPR;
+  fxCtx.setTransform(fxDPR, 0, 0, fxDPR, 0, 0);
+}
+resizeFx();
+addEventListener("resize", resizeFx);
+
+function drawParticles(dt) {
+  fxCtx.clearRect(0, 0, innerWidth, innerHeight);
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life += dt;
+    if (p.life > p.maxLife) { particles.splice(i, 1); continue; }
+    p.x += p.vx * dt * 60;
+    p.y += p.vy * dt * 60;
+
+    const f = 1 - p.life / p.maxLife;
+    const alpha = Math.min(1, f * 2);
+
+    if (p.type === "z") {
+      fxCtx.font = `${Math.round(14 * p.size)}px "Courier New", monospace`;
+      fxCtx.fillStyle = `rgba(255, 158, 203, ${alpha})`;
+      fxCtx.shadowBlur = 10;
+      fxCtx.shadowColor = "rgba(255, 158, 203, 0.8)";
+      fxCtx.fillText(p.ch, p.x, p.y);
+      fxCtx.shadowBlur = 0;
+    } else {
+      fxCtx.font = `${Math.round(14 * p.size)}px serif`;
+      fxCtx.fillStyle = `rgba(255, 158, 203, ${alpha})`;
+      fxCtx.shadowBlur = 8;
+      fxCtx.shadowColor = "rgba(255, 158, 203, 0.9)";
+      fxCtx.fillText(p.ch, p.x, p.y);
+      fxCtx.shadowBlur = 0;
+    }
+  }
+}
+
+// ============================================================
+// ASCII CANVAS (kotak pesan, bintang, lantai)
+// ============================================================
+const W = 90, H = 30, GROUND = H - 3;
+const BOX_W = Math.min(Math.max(44, LINE1.length + 4, LINE2.length + 4), 50);
+const BOX_X = Math.floor((W - BOX_W) / 2);
+const BOX_Y = 2;
+const BOX_H = 9;
+const L1_Y = BOX_Y + 2;
+const L2_Y = BOX_Y + 5;
+const L1_X = BOX_X + ((BOX_W - LINE1.length) >> 1);
+const L2_X = BOX_X + ((BOX_W - LINE2.length) >> 1);
+
+const T_TYPE = 1.8;
+const CPS1 = 14;
+const T_END1 = T_TYPE + LINE1.length / CPS1;
+const T_L2 = T_END1 + 0.7;
+const CPS2 = 9;
+const T_END2 = T_L2 + LINE2.length / CPS2;
+
+const PINK = [213, 219, 225, 231, 225, 219];
+const GOLD = [220, 222, 229, 231, 229, 222];
+
+function hsh(x, y) {
+  let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263)) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+let seed = 21;
+const rnd = () => {
+  seed = (seed + 0x6D2B79F5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+const STARS = [];
+while (STARS.length < 80) {
+  const x = Math.floor(rnd() * W);
+  const y = Math.floor(rnd() * (GROUND - 1));
+  const inBox = x >= BOX_X - 2 && x <= BOX_X + BOX_W + 2 && y >= BOX_Y - 2 && y <= BOX_Y + BOX_H + 1;
+  if (!inBox) STARS.push([x, y, rnd() * 6.28, 0.6 + rnd() * 2.2, "....+*#".charAt(Math.floor(rnd() * 7))]);
+}
+
+const cv = document.getElementById("asciiCanvas");
+const ctx = cv.getContext("2d");
+const PAL = {};
+function x256(c) {
+  if (PAL[c]) return PAL[c];
+  let r, g, b;
+  if (c < 16) [r, g, b] = [[0,0,0],[205,0,0],[0,205,0],[205,205,0],[0,0,238],[205,0,205],[0,205,205],[229,229,229],[127,127,127],[255,0,0],[0,255,0],[255,255,0],[92,92,255],[255,0,255],[0,255,255],[255,255,255]][c];
+  else if (c >= 232) r = g = b = 8 + (c - 232) * 10;
+  else { const lv = [0,95,135,175,215,255], k = c - 16; r = lv[Math.floor(k/36)]; g = lv[Math.floor(k/6)%6]; b = lv[k%6]; }
+  return PAL[c] = `rgb(${r},${g},${b})`;
+}
+
+const ch = new Array(W * H);
+const co = new Uint8Array(W * H);
+let heartParticles = []; // hati dari kotak (canvas ASCII)
+
+function render(t, dt) {
+  ch.fill(" ");
+  co.fill(0);
+  const put = (x, y, c, color) => {
+    x = Math.round(x); y = Math.round(y);
+    if (x >= 0 && x < W && y >= 0 && y < H) {
+      ch[y * W + x] = c;
+      co[y * W + x] = color;
+    }
+  };
+
+  for (const [x, y, ph, sp, c] of STARS) {
+    const b = 0.5 + 0.5 * Math.sin(t * sp + ph);
+    put(x, y, c, b < 0.3 ? 238 : b < 0.6 ? 244 : b < 0.85 ? 250 : 255);
+  }
+
+  const PCX = 8, PCY = 5;
+  for (let y = 0; y < 14; y++) for (let x = 0; x < 20; x++) {
+    const d = ((x - PCX) / 7) ** 2 + ((y - PCY) / 3.2) ** 2;
+    if (d <= 1) put(x, y, hsh(Math.floor(x/2), Math.floor(y/2)) < 0.25 ? ":" : ".", [231,230,229,228,223,187][Math.min(5, Math.floor(d*6))]);
+  }
+
+  for (let x = 0; x < W; x++) {
+    put(x, GROUND, "=", 241);
+    put(x, GROUND + 1, x % 2 === 0 ? "/" : "\\", 237);
+  }
+
+  const bc = t < T_TYPE ? 240 : PINK[Math.floor(t * 3) % PINK.length];
+  const openP = Math.min(1, t / 0.5);
+  for (let y = BOX_Y; y < BOX_Y + BOX_H; y++)
+    for (let x = BOX_X; x < BOX_X + BOX_W; x++) { ch[y * W + x] = " "; co[y * W + x] = 0; }
+
+  const drawW = Math.floor((BOX_W - 2) * openP);
+  const startX = BOX_X + 1 + Math.floor((BOX_W - 2 - drawW) / 2);
+  for (let x = startX; x < startX + drawW; x++) {
+    put(x, BOX_Y, "-", bc);
+    put(x, BOX_Y + BOX_H - 1, "-", bc);
+  }
+  if (openP >= 1) {
+    for (let y = BOX_Y + 1; y < BOX_Y + BOX_H - 1; y++) {
+      put(BOX_X, y, "|", bc);
+      put(BOX_X + BOX_W - 1, y, "|", bc);
+    }
+    put(BOX_X, BOX_Y, ".", bc); put(BOX_X + BOX_W - 1, BOX_Y, ".", bc);
+    put(BOX_X, BOX_Y + BOX_H - 1, "'", bc); put(BOX_X + BOX_W - 1, BOX_Y + BOX_H - 1, "'", bc);
+    const title = " \u2661 a little note \u2661 ";
+    const tx = BOX_X + Math.floor((BOX_W - title.length) / 2);
+    for (let i = 0; i < title.length; i++) put(tx + i, BOX_Y - 1, title[i], 218);
+  }
+
+  updateCat(t, dt);
+
+  if (t > T_END2 + 0.5) {
+    if (Math.random() < dt * 3) {
+      heartParticles.push([BOX_X + Math.random() * BOX_W, BOX_Y + BOX_H,
+        (Math.random() - 0.5) * 3, -2.5 - Math.random() * 2.5, 0, 3.2, "<3"]);
+    }
+  }
+  for (let i = heartParticles.length - 1; i >= 0; i--) {
+    const p = heartParticles[i]; p[4] += dt;
+    if (p[4] > p[5]) { heartParticles.splice(i, 1); continue; }
+    p[0] += p[2] * dt; p[1] += p[3] * dt;
+    const f = 1 - p[4] / p[5];
+    const c = f > 0.3 ? [197, 204, 211, 218][Math.floor(p[4] * 3) % 4] : 95;
+    put(p[0], p[1], "<", c);
+    put(p[0] + 1, p[1], "3", c);
+  }
+
+  const typed = (line, x0, y, n, pal) => {
+    for (let i = 0; i < Math.min(n, line.length); i++)
+      put(x0 + i, y, line[i], (n - i) < 2 ? 231 : pal[Math.floor(i * 0.5 + t * 5) % pal.length]);
+  };
+  const nTyped = Math.max(0, Math.min(LINE1.length, Math.floor((t - T_TYPE) * CPS1)));
+  if (t >= T_TYPE) typed(LINE1, L1_X, L1_Y, nTyped, PINK);
+  const n2 = Math.max(0, Math.min(LINE2.length, Math.floor((t - T_L2) * CPS2)));
+  if (t >= T_L2) typed(LINE2, L2_X, L2_Y, n2, GOLD);
+  if (n2 === LINE2.length) {
+    const beat = Math.floor(t * 3) % 2 === 0 ? 211 : 204;
+    for (const d of [-4, LINE2.length + 2]) {
+      put(L2_X + d, L2_Y, "<", beat);
+      put(L2_X + d + 1, L2_Y, "3", beat);
+    }
+  }
+}
+
+let DPR, fs, cw, chh, ox, oy;
+function layout() {
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  cv.width = innerWidth * DPR;
+  cv.height = innerHeight * DPR;
+  fs = Math.min(22, innerWidth * 0.98 / (W * 0.6), innerHeight * 0.98 / ((H + 2) * 1.15));
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.font = fs + 'px "Courier New", ui-monospace, monospace';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  cw = ctx.measureText("M").width;
+  chh = fs * 1.15;
+  ox = (innerWidth - W * cw) / 2;
+  oy = (innerHeight - (H + 2) * chh) / 2;
+
+  const spriteSize = Math.max(80, Math.min(150, innerWidth * 0.12));
+  catSprite.style.width = spriteSize + "px";
+  catSprite.style.height = spriteSize + "px";
+
+  resizeFx();
+}
+
+function draw() {
+  ctx.fillStyle = "#0a0710";
+  ctx.fillRect(0, 0, innerWidth, innerHeight);
+  let last = "";
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const c = ch[y * W + x];
+    if (c === " ") continue;
+    const col = x256(co[y * W + x]);
+    if (col !== last) { ctx.fillStyle = col; last = col; }
+    ctx.fillText(c, ox + (x + 0.5) * cw, oy + (y + 0.5) * chh);
+  }
+}
+
+// ============================================================
+// INTERAKSI: TAP UNTUK LEMPAR KE KOTAK & TIDUR
+// ============================================================
+function startSleepSequence() {
+  if (interact.mode === "toBox" || interact.mode === "sleep") return;
+
+  const target = boxBottomRight();
+  interact.mode = "toBox";
+  interact.tStart = performance.now() / 1000;
+  interact.startX = cat.xPct;
+  interact.startY = cat.yPct;
+  // target: sedikit di dalam pojok kanan bawah kotak
+  interact.targetX = target.xPct - 4;
+  interact.targetY = target.yPct - 3;
+
+  hintEl.style.opacity = "0";
+}
+
+function wakeUpEarly() {
+  if (interact.mode !== "sleep") return;
+  interact.mode = "toFloor";
+  interact.tStart = performance.now() / 1000;
+  interact.startX = cat.xPct;
+  interact.startY = cat.yPct;
+  interact.targetX = 10 + Math.random() * 70;
+  interact.targetY = 8;
+}
+
+addEventListener("pointerdown", () => {
+  const nowT = performance.now() / 1000;
+  if (interact.mode === "sleep") {
+    // kalau sedang tidur & di-tap → bangun
+    if (nowT - interact.tStart > 1.2) wakeUpEarly();
+  } else if (interact.mode === "roam") {
+    // kalau sedang jalan → lompat ke kotak & tidur
+    startSleepSequence();
+  }
+});
+
+// ============================================================
+// LOOP UTAMA
+// ============================================================
+let t0 = performance.now();
+let tPrev = t0;
+let lastDraw = 0;
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (now - lastDraw < 45) return;
+  const dt = Math.min(0.1, (now - tPrev) / 1000);
+  tPrev = now;
+  lastDraw = now;
+  const t = now / 1000 - t0 / 1000;
+
+  render(t, dt);
+  draw();
+  drawParticles(dt);
+}
+
+layout();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
